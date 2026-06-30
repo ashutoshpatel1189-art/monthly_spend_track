@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UPI Expense Tracker</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#f4f1ea; --card:#ffffff; --border:#e6e2d6; --border-strong:#cdc8b8;
+    --text:#1b2230; --text-secondary:#5d6270; --text-muted:#93917f;
+    --accent:#0e7c66; --accent-bg:#e3f3ee; --accent-text:#0a5746;
+    --indigo:#22305a; --indigo-bg:#e9ecf6;
+    --danger:#b1392f; --danger-bg:#fbeae7;
+    --warning:#9a5b12; --warning-bg:#faecd8;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    background:
+      radial-gradient(900px 400px at 100% -10%, rgba(14,124,102,0.08), transparent 60%),
+      var(--bg);
+    color:var(--text); padding:1.5rem;
+  }
+  .wrap{max-width:480px; margin:0 auto;}
+  .topbar{display:flex; align-items:center; justify-content:space-between; margin-bottom:1.25rem;}
+  h1{font-size:19px; font-weight:700; margin:0; letter-spacing:-0.01em;}
+  h1 span{color:var(--accent);}
+  .avatar{
+    width:34px; height:34px; border-radius:50%; background:var(--indigo); color:#fff;
+    display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700;
+    cursor:pointer; border:none; flex-shrink:0;
+  }
+  input, select{
+    width:100%; height:42px; border:1px solid var(--border-strong); border-radius:var(--radius);
+    padding:0 12px; font-size:14px; background:var(--card); color:var(--text);
+  }
+  input:focus, select:focus{outline:2px solid var(--accent); outline-offset:1px;}
+  label{font-size:13px; color:var(--text-secondary); display:block; margin-bottom:6px;}
+  button{
+    cursor:pointer; font-size:14px; border-radius:var(--radius); border:1px solid var(--border-strong);
+    background:var(--card); color:var(--text); padding:10px 16px; font-family:inherit;
+  }
+  button:active{transform:scale(0.98);}
+  .primary-btn{background:var(--indigo); color:#fff; border:none; width:100%; font-weight:600; height:44px;}
+  .ghost-btn{background:transparent; border:1px solid var(--border-strong); width:100%;}
+  .danger-btn{background:transparent; color:var(--danger); border:1px solid var(--danger-bg); width:100%;}
+  .tabs{display:flex; gap:6px; margin-bottom:1.25rem; flex-wrap:wrap;}
+  .tabbtn{display:flex; align-items:center; gap:6px; padding:8px 14px; font-size:13px;}
+  .tabbtn.active{background:var(--accent-bg); color:var(--accent-text); border-color:var(--accent);}
+  .metric-grid{display:grid; grid-template-columns:repeat(2,1fr); gap:12px; margin-bottom:1.25rem;}
+  .metric-card{
+    background:var(--card); border:1px solid var(--border); border-radius:14px; padding:1rem;
+    position:relative; overflow:hidden;
+  }
+  .metric-card.hero{
+    background:linear-gradient(135deg, var(--indigo), #344a82);
+    color:#fff; border:none;
+  }
+  .metric-card.hero p.label{color:rgba(255,255,255,0.7);}
+  .metric-card p.label{font-size:12.5px; color:var(--text-secondary); margin:0 0 4px;}
+  .metric-card p.value{font-size:22px; font-weight:700; margin:0; letter-spacing:-0.01em;}
+  .bar-track{height:9px; background:var(--border); border-radius:5px; overflow:hidden; margin-top:6px;}
+  .bar-fill{height:100%; border-radius:5px; transition:width .4s ease;}
+  .warning-box{
+    display:flex; gap:8px; align-items:flex-start; padding:11px 13px; border-radius:var(--radius);
+    font-size:13px; margin-bottom:8px; line-height:1.4;
+  }
+  .warning-box.warn{background:var(--warning-bg); color:var(--warning);}
+  .warning-box.danger{background:var(--danger-bg); color:var(--danger);}
+  .warning-box.ok{color:var(--text-secondary); background:var(--card); border:1px solid var(--border);}
+  .warning-box.info{background:var(--accent-bg); color:var(--accent-text);}
+  .cat-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin:6px 0 1rem;}
+  .catbtn{display:flex; flex-direction:column; align-items:center; gap:4px; padding:10px 4px; font-size:12px;}
+  .catbtn.selected{background:var(--accent-bg); color:var(--accent-text); border-color:var(--accent);}
+  .field{margin-bottom:1rem;}
+  .history-row{display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--border);}
+  .history-row .left{display:flex; flex-direction:column;}
+  .history-row .cat{font-size:14px;}
+  .history-row .date{font-size:12px; color:var(--text-muted);}
+  .history-row .right{display:flex; align-items:center; gap:10px;}
+  .history-row .amt{font-size:14px; font-weight:600;}
+  .del-btn{border:none; background:transparent; color:var(--text-muted); font-size:13px; padding:4px 8px;}
+  .empty{font-size:13px; color:var(--text-secondary); padding:1rem 0;}
+  .chart-wrap{position:relative; height:220px; margin-bottom:1rem; background:var(--card); border:1px solid var(--border); border-radius:14px; padding:12px;}
+  .setup-card{background:var(--card); border:1px solid var(--border); border-radius:16px; padding:1.5rem; max-width:420px;}
+  .footnote{font-size:12px; color:var(--text-muted); margin-top:1rem; line-height:1.5;}
+  .section-title{font-size:13px; color:var(--text-secondary); margin:0 0 8px; font-weight:600;}
+  .ring-row{display:flex; align-items:center; gap:14px; background:var(--card); border:1px solid var(--border); border-radius:14px; padding:1rem; margin-bottom:1rem;}
+  .ring-text p{margin:0;}
+  .ring-text .big{font-size:18px; font-weight:700;}
+  .ring-text .small{font-size:12.5px; color:var(--text-secondary);}
+  .loading{font-size:13px; color:var(--text-muted); padding:2rem 0; text-align:center;}
+  hr.div{border:none; border-top:1px solid var(--border); margin:1.25rem 0;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <h1>UPI <span>expense</span> tracker</h1>
+    <button class="avatar" id="avatarBtn">--</button>
+  </div>
+  <div id="app"><div class="loading">Loading your data…</div></div>
+</div>
+
+<script>
+const CATS = ['Food','Travel','Rent','Shopping','Recharge','Other'];
+const ICON = {Food:'🍔',Travel:'🚗',Rent:'🏠',Shopping:'🛍️',Recharge:'📱',Other:'•••'};
+const CAT_COLOR = {Food:'#0e7c66',Travel:'#22305a',Rent:'#b1392f',Shopping:'#9a5b12',Recharge:'#5b6cc7',Other:'#8a8474'};
+const STORE_KEY = 'upi-tracker-state-v2';
+
+let state = null;
+let tab = 'dashboard';
+let selectedCat = 'Food';
+let lastRenderedDate = todayStr();
+let catChartInstance = null;
+
+function defaultState(){
+  return { name:'', income:0, savingsGoal:0, dailyLimitOverride:0, expenses:[], setupDone:false };
+}
+
+async function loadState(){
+  try{
+    const result = await window.storage.get(STORE_KEY, false);
+    if(result && result.value) return JSON.parse(result.value);
+  }catch(e){ /* key not found or storage unavailable */ }
+  return defaultState();
+}
+async function saveState(){
+  try{
+    const result = await window.storage.set(STORE_KEY, JSON.stringify(state), false);
+    if(!result) console.error('Storage save returned null');
+  }catch(e){ console.error('save failed', e); }
+}
+
+function fmt(n){ return '₹' + Math.round(n).toLocaleString('en-IN'); }
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+function monthStart(){ const d=new Date(); return new Date(d.getFullYear(),d.getMonth(),1).toISOString().slice(0,10); }
+function weekStart(){
+  const d=new Date(); const day=d.getDay(); const diff=(day===0?6:day-1);
+  const ws=new Date(d); ws.setDate(d.getDate()-diff); return ws.toISOString().slice(0,10);
+}
+function spendable(){ return Math.max(state.income - state.savingsGoal, 0); }
+function daysInMonth(){ const d=new Date(); return new Date(d.getFullYear(), d.getMonth()+1, 0).getDate(); }
+function computedDailyLimit(){ return spendable() / daysInMonth(); }
+function dailyLimit(){ return state.dailyLimitOverride > 0 ? state.dailyLimitOverride : computedDailyLimit(); }
+function spentBetween(fromDate){
+  return state.expenses.filter(e => e.date >= fromDate).reduce((s,e)=>s+e.amount,0);
+}
+function initials(){
+  const n = (state.name||'').trim();
+  if(!n) return '🙂';
+  return n.split(/\s+/).slice(0,2).map(p=>p[0].toUpperCase()).join('');
+}
+
+// Keep the "today" date current even if the tab is left open across midnight.
+function startDateWatcher(){
+  setInterval(()=>{
+    const now = todayStr();
+    if(now !== lastRenderedDate){
+      lastRenderedDate = now;
+      render();
+    }
+  }, 60000);
+  document.addEventListener('visibilitychange', ()=>{
+    if(!document.hidden){
+      const now = todayStr();
+      if(now !== lastRenderedDate){ lastRenderedDate = now; }
+      render();
+    }
+  });
+}
+
+async function init(){
+  state = await loadState();
+  lastRenderedDate = todayStr();
+  render();
+  startDateWatcher();
+  document.getElementById('avatarBtn').addEventListener('click', ()=>{ tab='profile'; render(); });
+}
+
+function render(){
+  const el = document.getElementById('app');
+  document.getElementById('avatarBtn').textContent = state.setupDone ? initials() : '🙂';
+  if(!state.setupDone){ el.innerHTML = setupView(); attachSetup(); return; }
+
+  el.innerHTML = `
+    <div class="tabs">
+      ${tabBtn('dashboard','📊','Dashboard')}
+      ${tabBtn('add','➕','Add expense')}
+      ${tabBtn('history','📜','History')}
+      ${tabBtn('insights','💡','Insights')}
+      ${tabBtn('profile','👤','Profile')}
+    </div>
+    <div id="tab-content"></div>
+  `;
+  document.querySelectorAll('.tabbtn').forEach(b=>b.addEventListener('click', ()=>{ tab=b.dataset.tab; render(); }));
+
+  const content = document.getElementById('tab-content');
+  if(tab==='dashboard') content.innerHTML = dashboardView();
+  if(tab==='add'){ content.innerHTML = addView(); attachAdd(); }
+  if(tab==='history'){ content.innerHTML = historyView(); attachHistory(); }
+  if(tab==='insights'){ content.innerHTML = insightsView(); setTimeout(drawChart,0); }
+  if(tab==='profile'){ content.innerHTML = profileView(); attachProfile(); }
+}
+
+function tabBtn(id,icon,label){
+  return `<button class="tabbtn ${tab===id?'active':''}" data-tab="${id}">${icon} ${label}</button>`;
+}
+
+function setupView(){
+  return `<div class="setup-card">
+    <p style="font-weight:700; font-size:16px; margin:0 0 4px;">Set up your budget</p>
+    <p style="font-size:13px; color:var(--text-secondary); margin:0 0 1.25rem;">This stays saved on your account — pick up right where you left off.</p>
+    <div class="field">
+      <label>Your name</label>
+      <input id="name" type="text" placeholder="Asha" />
+    </div>
+    <div class="field">
+      <label>Monthly income</label>
+      <input id="inc" type="number" placeholder="40000" />
+    </div>
+    <div class="field">
+      <label>Savings goal</label>
+      <input id="sav" type="number" placeholder="15000" />
+    </div>
+    <div class="field">
+      <label>Daily spending limit (optional — leave blank to auto-calculate)</label>
+      <input id="dlim" type="number" placeholder="e.g. 800" />
+    </div>
+    <button class="primary-btn" id="setupBtn">Start tracking</button>
+  </div>`;
+}
+function attachSetup(){
+  document.getElementById('setupBtn').addEventListener('click', async ()=>{
+    const inc = parseFloat(document.getElementById('inc').value)||0;
+    const sav = parseFloat(document.getElementById('sav').value)||0;
+    const dlim = parseFloat(document.getElementById('dlim').value)||0;
+    const name = document.getElementById('name').value.trim();
+    state.income = inc; state.savingsGoal = sav; state.dailyLimitOverride = dlim;
+    state.name = name; state.setupDone = true;
+    await saveState(); render();
+  });
+}
+
+function dashboardView(){
+  const today = spentBetween(todayStr());
+  const week = spentBetween(weekStart());
+  const month = spentBetween(monthStart());
+  const remaining = Math.max(spendable()-month,0);
+  const pct = spendable()>0 ? Math.min((month/spendable())*100,100) : 0;
+  const dLimit = dailyLimit();
+  const todayPct = dLimit>0 ? Math.min((today/dLimit)*100,100) : 0;
+
+  let warnings = [];
+  if(dLimit>0 && today > dLimit) warnings.push({type:'danger', text:`You've spent ${fmt(today)} today — over your ${fmt(dLimit)} daily limit.`});
+  else if(dLimit>0 && todayPct>=80) warnings.push({type:'warn', text:`You're at ${Math.round(todayPct)}% of today's ${fmt(dLimit)} limit.`});
+  if(pct >= 100) warnings.push({type:'danger', text:`Monthly budget fully used.`});
+  else if(pct >= 80) warnings.push({type:'warn', text:`Monthly budget ${Math.round(pct)}% used.`});
+
+  return `
+  <div class="metric-grid">
+    <div class="metric-card hero">
+      <p class="label">Today's limit</p>
+      <p class="value">${fmt(dLimit)}</p>
+      <div class="bar-track" style="background:rgba(255,255,255,0.25);"><div class="bar-fill" style="width:${todayPct}%; background:${todayPct>=100?'#e07a6b':'#7fd6c0'};"></div></div>
+    </div>
+    ${metricCard('Today spent', fmt(today))}
+    ${metricCard('Week spent', fmt(week))}
+    ${metricCard('Month spent', fmt(month))}
+  </div>
+  <div style="margin-bottom:1.25rem;">
+    <div style="display:flex; justify-content:space-between; font-size:13px; color:var(--text-secondary);">
+      <span>Monthly budget used</span><span>${Math.round(pct)}% · ${fmt(remaining)} left</span>
+    </div>
+    <div class="bar-track"><div class="bar-fill" style="width:${pct}%; background:${pct>=100?'var(--danger)':pct>=80?'var(--warning)':'var(--accent)'};"></div></div>
+  </div>
+  ${warnings.length
+    ? warnings.map(w=>`<div class="warning-box ${w.type}">⚠️ ${w.text}</div>`).join('')
+    : `<div class="warning-box ok">✓ You're on track — no warnings right now.</div>`}
+  <p class="footnote">Salary: ${fmt(state.income)} · Savings goal: ${fmt(state.savingsGoal)} · Spendable budget: ${fmt(spendable())}${state.dailyLimitOverride>0 ? ' · Daily limit set manually' : ' · Daily limit auto-calculated'}</p>
+  `;
+}
+function metricCard(label,val){
+  return `<div class="metric-card"><p class="label">${label}</p><p class="value">${val}</p></div>`;
+}
+
+function addView(){
+  return `<div style="max-width:420px;">
+    <div class="field">
+      <label>Amount</label>
+      <input id="amt" type="number" placeholder="250" />
+    </div>
+    <div class="field">
+      <label>Category</label>
+      <div class="cat-grid">
+        ${CATS.map(c=>`<button class="catbtn" data-cat="${c}">${ICON[c]}<br>${c}</button>`).join('')}
+      </div>
+    </div>
+    <div class="field">
+      <label>Date</label>
+      <input id="date" type="date" value="${todayStr()}" />
+    </div>
+    <div class="field">
+      <label>Note (optional)</label>
+      <input id="note" type="text" placeholder="Lunch with friends" />
+    </div>
+    <button class="primary-btn" id="addBtn">Add expense</button>
+  </div>`;
+}
+function attachAdd(){
+  selectedCat = 'Food';
+  document.querySelectorAll('.catbtn').forEach(b=>{
+    if(b.dataset.cat===selectedCat) b.classList.add('selected');
+    b.addEventListener('click', ()=>{
+      selectedCat = b.dataset.cat;
+      document.querySelectorAll('.catbtn').forEach(x=>x.classList.remove('selected'));
+      b.classList.add('selected');
+    });
+  });
+  document.getElementById('addBtn').addEventListener('click', async ()=>{
+    const amount = parseFloat(document.getElementById('amt').value);
+    if(!amount || amount<=0){ alert('Enter a valid amount'); return; }
+    const date = document.getElementById('date').value || todayStr();
+    const note = document.getElementById('note').value;
+    state.expenses.push({id:Date.now().toString(), amount, category:selectedCat, date, note});
+    await saveState();
+    tab='dashboard'; render();
+  });
+}
+
+function historyView(){
+  const sorted = [...state.expenses].sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id));
+  if(!sorted.length) return `<div class="empty">No expenses logged yet. Add your first one from the "Add expense" tab.</div>`;
+  return sorted.map(e=>`
+    <div class="history-row">
+      <div class="left">
+        <span class="cat">${ICON[e.category]||'•'} ${e.category}${e.note? ' · '+e.note : ''}</span>
+        <span class="date">${e.date}</span>
+      </div>
+      <div class="right">
+        <span class="amt">${fmt(e.amount)}</span>
+        <button class="del-btn" data-id="${e.id}">Delete</button>
+      </div>
+    </div>`).join('');
+}
+function attachHistory(){
+  document.querySelectorAll('.del-btn').forEach(b=>b.addEventListener('click', async ()=>{
+    state.expenses = state.expenses.filter(e=>e.id!==b.dataset.id);
+    await saveState(); render();
+  }));
+}
+
+function insightsView(){
+  const month = spentBetween(monthStart());
+  const remaining = spendable()-month;
+  const daysLeft = daysInMonth() - new Date().getDate();
+  const dLimit = dailyLimit();
+  const recentDaily = month / Math.max(new Date().getDate(),1);
+
+  let prediction;
+  if(recentDaily > dLimit && remaining>0){
+    const daysToExceed = Math.max(Math.floor(remaining/recentDaily),0);
+    prediction = daysToExceed <= daysLeft
+      ? `At this rate you'll exceed budget in ${daysToExceed} day${daysToExceed===1?'':'s'}.`
+      : `At this rate you're on track to finish within budget.`;
+  } else {
+    prediction = `At this rate you're on track to finish within budget.`;
+  }
+
+  const byCat = {}; CATS.forEach(c=>byCat[c]=0);
+  state.expenses.filter(e=>e.date>=monthStart()).forEach(e=>{ byCat[e.category]=(byCat[e.category]||0)+e.amount; });
+  const total = Object.values(byCat).reduce((a,b)=>a+b,0)||1;
+  const foodPct = (byCat.Food/total)*100;
+
+  return `
+  <p class="section-title">Category breakdown (this month)</p>
+  <div class="chart-wrap"><canvas id="catChart"></canvas></div>
+  <p class="section-title">Last 7 days</p>
+  <div class="chart-wrap" style="height:160px;"><canvas id="trendChart"></canvas></div>
+  <div class="warning-box info">📈 ${prediction}</div>
+  ${foodPct>40 ? `<div class="warning-box warn">💡 Food is ${Math.round(foodPct)}% of this month's spending — your biggest category.</div>` : ''}
+  `;
+}
+function drawChart(){
+  const ctx = document.getElementById('catChart');
+  const ctx2 = document.getElementById('trendChart');
+  if(!window.Chart) return;
+  const byCat = {}; CATS.forEach(c=>byCat[c]=0);
+  state.expenses.filter(e=>e.date>=monthStart()).forEach(e=>{ byCat[e.category]=(byCat[e.category]||0)+e.amount; });
+  const usedCats = CATS.filter(c=>byCat[c]>0);
+
+  if(ctx){
+    if(usedCats.length){
+      new Chart(ctx, {
+        type:'doughnut',
+        data:{
+          labels:usedCats,
+          datasets:[{
+            data:usedCats.map(c=>byCat[c]),
+            backgroundColor:usedCats.map(c=>CAT_COLOR[c]),
+            borderColor:'#ffffff',
+            borderWidth:2,
+            hoverOffset:6
+          }]
+        },
+        options:{
+          responsive:true, maintainAspectRatio:false, cutout:'62%',
+          plugins:{ legend:{ position:'bottom', labels:{ boxWidth:10, font:{size:11}, color:'#5d6270' } } }
+        }
+      });
+    } else {
+      const p = document.createElement('p');
+      p.className='empty'; p.textContent='No expenses this month yet.';
+      ctx.parentElement.appendChild(p);
+    }
+  }
+
+  if(ctx2){
+    const days = [];
+    for(let i=6;i>=0;i--){
+      const d = new Date(); d.setDate(d.getDate()-i);
+      days.push(d.toISOString().slice(0,10));
+    }
+    const totals = days.map(d => state.expenses.filter(e=>e.date===d).reduce((s,e)=>s+e.amount,0));
+    new Chart(ctx2, {
+      type:'line',
+      data:{
+        labels:days.map(d=>d.slice(5)),
+        datasets:[{
+          data:totals,
+          borderColor:'#0e7c66',
+          backgroundColor:'rgba(14,124,102,0.12)',
+          fill:true, tension:0.35, pointRadius:3, pointBackgroundColor:'#0e7c66'
+        }]
+      },
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{display:false} },
+        scales:{ y:{ beginAtZero:true, grid:{color:'rgba(0,0,0,0.06)'} }, x:{ grid:{display:false} } }
+      }
+    });
+  }
+}
+
+function profileView(){
+  return `<div style="max-width:420px;">
+    <div class="ring-row">
+      <div class="avatar" style="width:48px; height:48px; font-size:16px; cursor:default;">${initials()}</div>
+      <div class="ring-text">
+        <p class="big">${state.name || 'No name set'}</p>
+        <p class="small">Tracking since you started — data is saved automatically.</p>
+      </div>
+    </div>
+    <div class="field">
+      <label>Your name</label>
+      <input id="p-name" type="text" value="${state.name||''}" placeholder="Asha" />
+    </div>
+    <div class="field">
+      <label>Monthly income</label>
+      <input id="p-inc" type="number" value="${state.income||''}" />
+    </div>
+    <div class="field">
+      <label>Savings goal</label>
+      <input id="p-sav" type="number" value="${state.savingsGoal||''}" />
+    </div>
+    <div class="field">
+      <label>Daily spending limit (set to 0 to auto-calculate from income & savings)</label>
+      <input id="p-dlim" type="number" value="${state.dailyLimitOverride||''}" placeholder="0 = auto" />
+    </div>
+    <button class="primary-btn" id="p-save">Save changes</button>
+    <hr class="div">
+    <p class="section-title">Data</p>
+    <p class="footnote" style="margin-top:0;">${state.expenses.length} expense${state.expenses.length===1?'':'s'} logged. Your data is stored securely under your account and syncs back whenever you open this tracker.</p>
+    <button class="danger-btn" id="p-reset">Clear all data</button>
+  </div>`;
+}
+function attachProfile(){
+  document.getElementById('p-save').addEventListener('click', async ()=>{
+    state.name = document.getElementById('p-name').value.trim();
+    state.income = parseFloat(document.getElementById('p-inc').value)||0;
+    state.savingsGoal = parseFloat(document.getElementById('p-sav').value)||0;
+    state.dailyLimitOverride = parseFloat(document.getElementById('p-dlim').value)||0;
+    await saveState();
+    tab='dashboard'; render();
+  });
+  document.getElementById('p-reset').addEventListener('click', async ()=>{
+    if(!confirm('This will delete all expenses and reset your budget. Continue?')) return;
+    state = defaultState();
+    await saveState();
+    render();
+  });
+}
+
+init();
+</script>
+</body>
+</html>
